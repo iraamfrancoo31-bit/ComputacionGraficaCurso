@@ -107,25 +107,51 @@ int main()
 	{
 		// Positions            // Colors           // Texture Coords (cara = numero del dado)
 		// CARA FRONTAL (+Z) -> numero 1
-		-0.5f, -0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.0f,   0.5f,
-		0.5f, -0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.333f, 0.5f,
-		0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.333f, 1.0f,
-		-0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.0f,   1.0f,
+		-0.5f, -0.5f,  0.5f,	1.0f, 1.0f, 1.0f,   0.0f,   0.5f,
+		0.5f, -0.5f,  0.5f,		1.0f, 1.0f, 1.0f,   0.333f, 0.5f,
+		0.5f,  0.5f,  0.5f,		1.0f, 1.0f, 1.0f,   0.333f, 1.0f,
+		-0.5f,  0.5f,  0.5f,	1.0f, 1.0f, 1.0f,   0.0f,   1.0f,
 
-		// CARA DERECHA (+X) -> numero 2
+		// CARA DERECHA (+X) -> numero 3
 		0.5f, -0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.333f, 0.5f,
 		0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 1.0f,   0.667f, 0.5f,
 		0.5f,  0.5f, -0.5f,   1.0f, 1.0f, 1.0f,   0.667f, 1.0f,
 		0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.333f, 1.0f,
 
+		// CARA TRASERA (-Z) -> numero 2
+		0.5f, -0.5f,  -0.5f,	1.0f, 1.0f, 1.0f,   1.0f,   0.5f,
+		-0.5f, -0.5f,  -0.5f,	1.0f, 1.0f, 1.0f,   0.667f, 0.5f,
+		-0.5f,  0.5f,  -0.5f,  1.0f, 1.0f, 1.0f,   0.667f, 1.0f,
+		0.5f,  0.5f,  -0.5f,   1.0f, 1.0f, 1.0f,   1.0f,   1.0f,
+
+		// CARA IZQUIERDA (-X) -> numero 6
+		-0.5f, -0.5f, 0.5f,   1.0f, 1.0f, 1.0f,   0.667f, 0.5f,
+		-0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 1.0f,   1.0f, 0.5f,
+		-0.5f, 0.5f, -0.5f,   1.0f, 1.0f, 1.0f,  1.0f, 0.0f,
+		-0.5f, 0.5f, 0.5f,   1.0f, 1.0f, 1.0f,   0.667f, 0.0f,
+
+		// CARA INFERIOR (-Y) -> numero 
+		-0.5f, -0.5f, 0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 0.5f,
+		-0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f,
+		0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 1.0f,  0.333f, 0.0f,
+		0.5f, -0.5f, 0.5f,   1.0f, 1.0f, 1.0f,   0.333f, 0.5f,
+
+		// CARA SUPERIOR (Y) -> numero 
+		-0.5f, 0.5f, 0.5f,   1.0f, 1.0f, 1.0f,   0.333f, 0.5f,
+		-0.5f, 0.5f, -0.5f,   1.0f, 1.0f, 1.0f,   0.333f, 0.0f,
+		0.5f, 0.5f, -0.5f,   1.0f, 1.0f, 1.0f,  0.667f, 0.0f,
+		0.5f, 0.5f, 0.5f,   1.0f, 1.0f, 1.0f,   0.667f, 0.5f,
 		
 	};
 
 	GLuint indices[] =
 	{  // Note that we start from 0!
-		0, 1, 2,   0, 2, 3,   // frontal
-		 4, 5, 6,   4, 6, 7,   // derecha
-		8, 9,10,   8,10,11,   // arriba
+		0, 1, 2,   0, 2, 3,		// frontal
+		4, 5, 6,   4, 6, 7,		// derecha
+		8, 9,10,   8,10,11,		// trasera
+		12,13,14, 12,14,15,		// izquierda
+		16,17,18, 16,18,19,		//inferior
+		20,21,22, 20,22,23		//superior
 	
 	};
 
@@ -167,11 +193,11 @@ int main()
 	// Diffuse map
 	image = stbi_load("images/Dado.png", &textureWidth, &textureHeight, &nrChannels,0);
 	glBindTexture(GL_TEXTURE_2D, texture1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
 	glGenerateMipmap(GL_TEXTURE_2D);
 	if (image)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
@@ -220,7 +246,7 @@ int main()
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		// Draw the light object (using light's vertex attributes)
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 		// Swap the screen buffers
