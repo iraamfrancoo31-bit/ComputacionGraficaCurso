@@ -1,4 +1,4 @@
-/*	Previo 7
+/*	Práctica 7
 	28-septiembre-2026
 	Valenzuela Franco Iram Israel
 	317313143*/
@@ -62,7 +62,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo7_Iram_Valenzuela", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Practica7_Iram_Valenzuela", nullptr, nullptr);
 
 	if (nullptr == window)
 	{
