@@ -25,6 +25,8 @@ GLint TextureFromFile(const char *path, string directory);
 class Model
 {
 public:
+	glm::vec3 bmin = glm::vec3(1e9f);
+	glm::vec3 bmax = glm::vec3(-1e9f);
 	/*  Functions   */
 	// Constructor, expects a filepath to a 3D model.
 	Model(GLchar *path)
@@ -53,7 +55,7 @@ private:
 	{
 		// Read file via ASSIMP
 		Assimp::Importer importer;
-		const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
 
 		// Check for errors
 		if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
@@ -107,11 +109,22 @@ private:
 			vector.z = mesh->mVertices[i].z;
 			vertex.Position = vector;
 
-			// Normals
-			vector.x = mesh->mNormals[i].x;
-			vector.y = mesh->mNormals[i].y;
-			vector.z = mesh->mNormals[i].z;
-			vertex.Normal = vector;
+			bmin = glm::min(bmin, vector);
+			bmax = glm::max(bmax, vector);
+
+	
+		// Normals
+			if (mesh->HasNormals())
+			{
+				vector.x = mesh->mNormals[i].x;
+				vector.y = mesh->mNormals[i].y;
+				vector.z = mesh->mNormals[i].z;
+				vertex.Normal = vector;
+			}
+			else
+			{
+				vertex.Normal = glm::vec3(0.0f, 1.0f, 0.0f);
+			}
 
 			// Texture Coordinates
 			if (mesh->mTextureCoords[0]) // Does the mesh contain texture coordinates?

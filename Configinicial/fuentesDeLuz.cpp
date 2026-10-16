@@ -1,4 +1,4 @@
-/*	Previo9
+/*	Práctica9
 	15-octubre-2026
 	Valenzuela Franco Iram Israel
 	317313143 */
@@ -51,7 +51,7 @@ bool active;
 // Positions of the point lights
 glm::vec3 pointLightPositions[] = {
 	glm::vec3(0.0f,0.0f, 0.0f),
-	glm::vec3(0.0f,0.0f, 0.0f),
+	glm::vec3(-3.0f, 2.0f, 0.5f),
 	glm::vec3(0.0f,0.0f,  0.0f),
 	glm::vec3(0.0f,0.0f, 0.0f)
 };
@@ -109,6 +109,29 @@ glm::vec3 Light1 = glm::vec3(0);
 GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
 GLfloat lastFrame = 0.0f;  	// Time of last frame
 
+// Centra el modelo en 'pos', lo apoya en el piso y lo escala para que su dimension mayor mida 'tamano'
+glm::mat4 ColocarModelo(const Model& m, glm::vec3 pos, float tamano, bool zArriba = false)
+{
+	glm::vec3 size = m.bmax - m.bmin;
+	float mayor = glm::max(size.x, glm::max(size.y, size.z));
+	float s = tamano / mayor;
+	glm::vec3 c = (m.bmin + m.bmax) * 0.5f;
+
+	glm::mat4 M(1);
+	M = glm::translate(M, pos);
+	M = glm::scale(M, glm::vec3(s));
+	if (zArriba)
+	{
+		M = glm::rotate(M, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+		M = glm::translate(M, glm::vec3(-c.x, -c.y, -m.bmin.z));
+	}
+	else
+	{
+		M = glm::translate(M, glm::vec3(-c.x, -m.bmin.y, -c.z));
+	}
+	return M;
+}
+
 int main()
 {
 	// Init GLFW
@@ -121,7 +144,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);*/
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo9_Iram_Valenzuela", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Practica9_Iram_Valenzuela", nullptr, nullptr);
 
 	if (nullptr == window)
 	{
@@ -161,6 +184,9 @@ int main()
 	
 	Model Dog((char*)"Models/ball.obj");
 	Model Piso((char*)"Models/piso.obj");
+	Model Arbol((char*)"Models/arbolOBJ.obj");
+	Model Silla((char*)"Models/silla.obj");
+	Model Casa((char*)"Models/casa.obj");
 
 
 
@@ -245,13 +271,12 @@ int main()
 
 
 		// Point light 2
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].position"), pointLightPositions[1].x, pointLightPositions[1].y, pointLightPositions[1].z);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].ambient"), 0.05f, 0.05f, 0.05f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].diffuse"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].specular"), 0.0f, 0.0f, 0.0f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].ambient"), 0.1f, 0.0f, 0.0f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].diffuse"), 1.0f, 0.1f, 0.1f);
+		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[1].specular"), 1.0f, 0.3f, 0.3f);
 		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].constant"), 1.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].linear"), 0.0f);
-		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].quadratic"), 0.0f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].linear"), 0.14f);
+		glUniform1f(glGetUniformLocation(lightingShader.Program, "pointLights[1].quadratic"), 0.07f);
 
 		// Point light 3
 		glUniform3f(glGetUniformLocation(lightingShader.Program, "pointLights[2].position"), pointLightPositions[2].x, pointLightPositions[2].y, pointLightPositions[2].z);
@@ -306,10 +331,37 @@ int main()
 
 		//Carga de modelo 
         view = camera.GetViewMatrix();	
+		glUniform1i(glGetUniformLocation(lightingShader.Program, "transparency"), 0);
+		GLint useTexLoc = glGetUniformLocation(lightingShader.Program, "useTexture");
+		GLint colorLoc = glGetUniformLocation(lightingShader.Program, "objectColor");
+
+		// Objeto 1: Piso (con textura)
+		glUniform1i(useTexLoc, 1);
 		model = glm::mat4(1);
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		Piso.Draw(lightingShader);
 
+		// Objeto 3: Arbol (verde, mide 3 unidades)
+		glUniform1i(useTexLoc, 0);
+		glUniform3f(colorLoc, 0.1f, 0.6f, 0.15f);
+		model = ColocarModelo(Arbol, glm::vec3(-3.0f, 0.0f, 0.0f), 3.0f, true);
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		Arbol.Draw(lightingShader);
+
+		// Objeto 4: Silla (azul, mide 1 unidad)
+		glUniform3f(colorLoc, 0.0f, 0.16f, 0.95f);
+		model = ColocarModelo(Silla, glm::vec3(3.0f, 0.0f, 0.0f), 1.0f);
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		Silla.Draw(lightingShader);
+
+		// Objeto 5: Casa (mide 4 unidades)
+		glUniform3f(colorLoc, 0.8f, 0.4f, 0.3f);
+		model = ColocarModelo(Casa, glm::vec3(0.0f, 0.0f, -6.0f), 4.0f);
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		Casa.Draw(lightingShader);
+
+		// Regresar a textura para la esfera
+		glUniform1i(useTexLoc, 1);
 
 	
 		model = glm::mat4(1);
