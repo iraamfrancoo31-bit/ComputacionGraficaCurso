@@ -1,9 +1,9 @@
+
 /*	Previo 10
 	19-Octubre-2026
 	Valenzuela Franco Iram Israel
-	317313143 
+	317313143
 */
-
 
 #include <iostream>
 #include <cmath>
