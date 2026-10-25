@@ -1,11 +1,10 @@
-
-/*	Previo 10
-	19-Octubre-2026
+/*	Practica 10
+	24/10/2026
 	Valenzuela Franco Iram Israel
-	317313143
-*/
+	317313143  */
 
 #include <iostream>
+#include <cstdio>
 #include <cmath>
 
 // GLEW
@@ -110,11 +109,20 @@ glm::vec3 Light1 = glm::vec3(0);
 float rotBall = 0;
 bool AnimBall = false;
 
-// Subida y bajada de la pelota
-float noseY = 0.5f;        // Altura de la nariz del perro (AJUSTAR segun el modelo)
-float ballOffsetY = 0.0f;  // Desplazamiento vertical actual (0 = en la nariz)
-bool ballGoingUp = true;   // Direccion del movimiento
-float ballSpeed = 1.0f;    // Unidades por segundo
+// Subida y bajada de la pelota y salto del perro
+float noseY = 0.152f;                   // Altura de la nariz del perro (medida en RedDog.obj)
+float noseForward = 0.424f + 0.151f;    // Nariz del perro (0.424) + radio de la pelota (0.151) para que se toquen
+float ballCenterY = 0.3125f;            // Centro de la pelota dentro de ball.obj (altura)
+float ballCenterZ = 0.4702f;            // Centro de la pelota dentro de ball.obj (profundidad)
+float ballY = 0.652f;                   // Altura actual de la pelota
+
+// Perro: giro en circulo y salto
+float rotDog = 0.0f;       // Angulo del perro alrededor del plano (la pelota usa rotBall en sentido contrario)
+float rotSpeed = 40.0f;    // Grados por segundo del giro
+float dogRadius = 2.0f;    // Radio del circulo que recorre el perro (AJUSTAR)
+float dogFacing = 0.0f;    // Giro extra del perro por si mira hacia otro lado (prueba 90, 180 o 270)
+float dogJumpMax = 0.5f;   // Altura maxima del salto del perro
+float dogJumpY = 0.0f;     // Altura actual del salto
 
 
 // Deltatime
@@ -133,7 +141,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);*/
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo_10_Iram_Valenzuela", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Practica 10", nullptr, nullptr);
 
 	if (nullptr == window)
 	{
@@ -301,6 +309,11 @@ int main()
 		model = glm::mat4(1);
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glUniform1i(glGetUniformLocation(lightingShader.Program, "transparency"), 0);
+		// CAMBIO: el perro da vueltas en circulo sobre el piso y salta
+		model = glm::rotate(model, glm::radians(rotDog), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(dogRadius, dogJumpY, 0.0f));
+		model = glm::rotate(model, glm::radians(dogFacing), glm::vec3(0.0f, 1.0f, 0.0f));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		Dog.Draw(lightingShader);
 
 		model = glm::mat4(1);
@@ -308,8 +321,10 @@ int main()
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glUniform1i(glGetUniformLocation(lightingShader.Program, "transparency"), 1);
-		// CAMBIO: antes giraba (glm::rotate con rotBall); ahora se desplaza de arriba a abajo
-		model = glm::translate(model, glm::vec3(0.0f, ballOffsetY, 0.0f));
+		// CAMBIO: la pelota gira en sentido contrario al perro y ademas sube y baja
+		model = glm::rotate(model, glm::radians(rotBall), glm::vec3(0.0f, 1.0f, 0.0f)); // gira en sentido contrario al perro
+		model = glm::translate(model, glm::vec3(sqrt(dogRadius * dogRadius + noseForward * noseForward), ballY, 0.0f));
+		model = glm::translate(model, glm::vec3(0.0f, -ballCenterY, -ballCenterZ)); // ball.obj no esta centrada en el origen
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		Ball.Draw(lightingShader);
 		glDisable(GL_BLEND);  //Desactiva el canal alfa 
@@ -459,33 +474,32 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void Animation() {
 	if (AnimBall)
 	{
-		float maxOffset = pointLightPositions[0].y - noseY; // distancia de la nariz a la luz
-		if (maxOffset < 0.0f) maxOffset = 0.0f;
+		// Giro: el perro avanza de frente y la pelota gira en sentido contrario
+		rotDog -= rotSpeed * deltaTime;
+		float ajuste = glm::degrees(atan2(noseForward, dogRadius)); // desfase para que la pelota llegue a la nariz
+		rotBall = -rotDog - ajuste;
 
-		if (ballGoingUp)
-		{
-			ballOffsetY += ballSpeed * deltaTime;
-			if (ballOffsetY >= maxOffset)
-			{
-				ballOffsetY = maxOffset;
-				ballGoingUp = false;
-			}
-		}
-		else
-		{
-			ballOffsetY -= ballSpeed * deltaTime;
-			if (ballOffsetY <= 0.0f)
-			{
-				ballOffsetY = 0.0f;
-				ballGoingUp = true;
-			}
-		}
+		float ballMin = noseY + dogJumpMax;           // abajo: a la altura de la nariz del perro cuando salta
+		float ballMax = pointLightPositions[0].y;     // arriba: a la altura de la luz
+		if (ballMax < ballMin) ballMax = ballMin;
 
-		printf("%f\n", ballOffsetY);  // imprime en consola la altura de la pelota
+		// u: avance de cada golpe (0 = el perro le pega a la pelota, 1 = el siguiente golpe)
+		float u = fmod(fabs(rotDog), 180.0f) / 180.0f;
+
+		// Pelota: el golpe la lanza hacia arriba de golpe (sube rapido, luego frena), llega a la luz y cae de regreso
+		float v = pow(u, 0.7f);
+		ballY = ballMin + (ballMax - ballMin) * 4.0f * v * (1.0f - v);
+
+		// Perro: camina por el suelo y da un brinco corto (como con gravedad) justo para pegarle a la pelota
+		float d = (u < 0.5f) ? u : 1.0f - u;   // que tan cerca esta del golpe mas cercano
+		float t = d / 0.08f;                   // 0.08 = duracion del brinco (mas chico = brinco mas rapido)
+		dogJumpY = (t < 1.0f) ? dogJumpMax * (1.0f - t * t) : 0.0f;
+
+		printf("Pelota: %f  Perro: %f\n", ballY, dogJumpY);  // imprime en consola
 	}
 	else
 	{
-		rotBall = 0.0f;
+		//rotBall = 0.0f;
 	}
 }
 
