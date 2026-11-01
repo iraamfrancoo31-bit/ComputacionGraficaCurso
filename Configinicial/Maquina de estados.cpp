@@ -1,5 +1,5 @@
-/*  Practica 11
-	31-octubre-2026
+/*  Previo 11
+	26-octubre-2026
 	Valenzuela Franco Iram Israel
 	317313143*/
 
@@ -119,6 +119,19 @@ glm::vec3 dogPos(0.0f, 0.0f, 0.0f);
 float dogRot = 0.0f;
 bool step = false;
 
+// ---------------- Recorrido del perro (waypoints) ----------------
+const float L = 2.0f; // Mitad del lado del piso (limite que se usaba: 2.0). Ajustalo al tamano real de tu piso.
+glm::vec3 wp[] = {
+	glm::vec3(0.0f, 0.0f,  L),  // 0: camina al borde
+	glm::vec3(L,  0.0f,  L),  // 1: gira y camina por el borde hasta la esquina
+	glm::vec3(L,  0.0f, -L),  // 2: sigue por el borde
+	glm::vec3(-L,  0.0f, -L),  // 3: sigue por el borde
+	glm::vec3(-L,  0.0f,  L),  // 4: sigue por el borde (ultima esquina)
+	glm::vec3(0.0f, 0.0f, 0.0f) // 5: diagonal hacia el centro
+};
+const int nWp = sizeof(wp) / sizeof(wp[0]);
+int wpIndex = 0;
+
 
 
 // Deltatime
@@ -137,7 +150,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);*/
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo 11 - Lilian De la Pe�a Osorio", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo11_Valenzuela_Iram", nullptr, nullptr);
 
 	if (nullptr == window)
 	{
@@ -313,13 +326,13 @@ int main()
 		glUniform1i(glGetUniformLocation(lightingShader.Program, "transparency"), 0);
 		//Body
 		modelTemp = model = glm::translate(model, dogPos);
-		modelTemp = model = glm::rotate(model, glm::radians(dogRot), glm::vec3(0.0f, 1.0f, 0.0f)); //rotaci�n con matriz temporal para que las dem�s partes del perro roten con el cuerpo
+		modelTemp = model = glm::rotate(model, glm::radians(dogRot), glm::vec3(0.0f, 1.0f, 0.0f)); //rotacion con matriz temporal para que las demas partes del perro roten con el cuerpo
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		DogBody.Draw(lightingShader);
 		//Head
 		model = modelTemp;
 		model = glm::translate(model, glm::vec3(0.0f, 0.093f, 0.208f)); //el valor de y se pone en z
-		model = glm::rotate(model, glm::radians(head), glm::vec3(0.0f, 0.0f, 1.0f)); //se coloca traslaci�n con respecto al cuerpo y rotaci�n con respecto a la cabeza 
+		model = glm::rotate(model, glm::radians(head), glm::vec3(0.0f, 0.0f, 1.0f)); //se coloca traslacion con respecto al cuerpo y rotacion con respecto a la cabeza 
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		HeadDog.Draw(lightingShader);
 		//Tail 
@@ -355,7 +368,7 @@ int main()
 
 
 		model = glm::mat4(1);
-		glEnable(GL_BLEND);//Avtiva la funcionalidad para trabajar el canal alfa
+		glEnable(GL_BLEND);//Activa la funcionalidad para trabajar el canal alfa
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glUniform1i(glGetUniformLocation(lightingShader.Program, "transparency"), 1);
@@ -497,7 +510,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 		}
 		else
 		{
-			Light1 = glm::vec3(0);//Cuado es solo un valor en los 3 vectores pueden dejar solo una componente
+			Light1 = glm::vec3(0);//Cuando es solo un valor en los 3 vectores pueden dejar solo una componente
 		}
 	}
 	if (keys[GLFW_KEY_N])
@@ -505,11 +518,15 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 		AnimBall = !AnimBall;
 
 	}
-	if (keys[GLFW_KEY_B])
-	{
-		dogAnim = 1;
-		;
 
+	// Tecla B: inicia el recorrido del perro (solo si no esta caminando)
+	if (key == GLFW_KEY_B && action == GLFW_PRESS && dogAnim == 0)
+	{
+		// Reinicia el recorrido desde el centro
+		dogPos = glm::vec3(0.0f);
+		dogRot = 0.0f;
+		wpIndex = 0;
+		dogAnim = 1;
 	}
 
 }
@@ -528,45 +545,70 @@ void Animation() {
 	}
 
 	//Estado principal del perro
-	if (dogAnim == 1) //Walk animation 
+	if (dogAnim == 1) //Walk animation
 	{
-		// Condici�n para que el perro avance de forma continua y se detenga antes de terminar el piso
-		if (dogPos.z < 2.0f) // L�mite exacto antes de salir del piso
+		const float speed = 0.004f;    // avance por frame
+		const float turnSpeed = 1.5f;  // grados por frame al girar
+
+		glm::vec3 target = wp[wpIndex];
+		float dx = target.x - dogPos.x;
+		float dz = target.z - dogPos.z;
+		float dist = sqrt(dx * dx + dz * dz);
+
+		// Angulo (en grados, sobre Y) hacia el que debe mirar el perro
+		float targetRot = glm::degrees(atan2(dx, dz));
+		float diff = targetRot - dogRot;
+		while (diff > 180.0f)  diff -= 360.0f;   // ruta de giro mas corta
+		while (diff < -180.0f) diff += 360.0f;
+
+		// Ciclo de patas (se mueven tanto al caminar como al girar)
+		if (!step)
 		{
-			if (!step)
-			{
-				//Estado 1 cuando esta en falso
-				RLegs += 0.3f;
-				FLegs += 0.3f;
-				head += 0.3f;
-				tail += 0.3f;
-
-				dogPos.z += 0.004f;
-
-				if (RLegs > 15.0f)//condicion
-
-					step = true;
-			}
-
-			//paso siguiente, ahora negativas
-			else
-			{
-				RLegs -= 0.3f;
-				FLegs -= 0.3f;
-				head -= 0.3f;
-				tail -= 0.3f;
-
-				dogPos.z += 0.004f;
-
-				if (RLegs < -15.0f)//condicion para que no gire infinitamente depsues del paso
-					step = false;
-			}
+			RLegs += 0.3f;
+			FLegs += 0.3f;
+			head += 0.3f;
+			tail += 0.3f;
+			if (RLegs > 15.0f) step = true;
 		}
 		else
 		{
-			dogPos.z = 2.0f; // Se detiene fijamente al llegar al borde del piso
+			RLegs -= 0.3f;
+			FLegs -= 0.3f;
+			head -= 0.3f;
+			tail -= 0.3f;
+			if (RLegs < -15.0f) step = false;
 		}
 
+		if (fabs(diff) > 0.01f)
+		{
+			// 1) Primero gira hacia el siguiente punto
+			float giro = fmin(turnSpeed, fabs(diff));
+			dogRot += (diff > 0.0f ? giro : -giro);
+		}
+		else
+		{
+			// 2) Ya esta orientado: avanza en la direccion en la que mira
+			dogRot = targetRot;
+			if (dist > speed)
+			{
+				dogPos.x += sin(glm::radians(dogRot)) * speed;
+				dogPos.z += cos(glm::radians(dogRot)) * speed;
+			}
+			else
+			{
+				// Llego al punto: pasa al siguiente
+				dogPos = target;
+				wpIndex++;
+				if (wpIndex >= nWp)
+				{
+					// Termino el recorrido: se detiene y acomoda las patas
+					dogAnim = 0;
+					wpIndex = 0;
+					FLegs = RLegs = head = tail = 0.0f;
+					step = false;
+				}
+			}
+		}
 	}
 
 
